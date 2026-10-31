@@ -29,11 +29,34 @@
  for(const id of ['filter-month','filter-team','filter-user'])$(id).onchange=draw;
  $('filter-reset').onclick=()=>{for(const id of ['filter-month','filter-team','filter-user'])$(id).value='';draw();};
  window.KPIDashboard={setRows,draw};
- const repo=window.KPIRepository.createSampleRepository(),notice=$('notice'),form=$('record-form'),save=$('save-record');
+
+ const notice=$('notice'),form=$('record-form'),save=$('save-record');
+ let repo=null,busy=false;
  const show=(message,error=false)=>{notice.textContent=message;notice.className='message'+(error?' error':'');notice.setAttribute('role',error?'alert':'status');};
- async function reload(){ $('reload').disabled=true;show('데이터를 읽는 중입니다.');
- try{setRows(await repo.list());show('');}catch(e){setRows([]);$('empty').hidden=true;for(const id of ['total-target','total-actual','total-rate','total-count'])$(id).textContent='—';show('데이터를 읽지 못했습니다. '+e.message,true);}finally{$('reload').disabled=false;} }
- form.addEventListener('submit',async event=>{event.preventDefault();save.disabled=true;show('저장 중입니다.');
- try{const input=Object.fromEntries(new FormData(form));await repo.save(input);setRows(await repo.list());$('filter-month').value=input.month;$('filter-team').value=input.team.trim();draw();form.reset();show('샘플에 추가했습니다. 새로고침하면 초기화됩니다.');}catch(e){show('저장하지 못했습니다. '+e.message,true);}finally{save.disabled=false;}});
+ function lock(value){busy=value;save.disabled=value||!repo;$('reload').disabled=value;for(const el of form.elements)el.disabled=value||!repo;}
+ function unavailable(){setRows([]);$('empty').hidden=true;for(const id of ['total-target','total-actual','total-rate','total-count'])$(id).textContent='—';$('mode-label').textContent='공동 실습 모드 · 연결 확인 필요';}
+ async function reload(){
+  if(busy)return;lock(true);show('공동 실습 데이터를 읽는 중입니다.');
+  try{
+   if(!repo)repo=window.KPIPublicRepository.createPublicRepository(window.KPI_PUBLIC_CONFIG);
+   setRows(await repo.list());$('mode-label').textContent='공동 실습 모드 · DB 연결됨';show('');
+  }catch(e){unavailable();show('읽기 실패: '+e.message,true);}
+  finally{lock(false);}
+ }
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(busy||!repo)return;
+  lock(true);show('공동 DB에 추가하는 중입니다.');let committed=false;
+  try{
+   const input=Object.fromEntries(new FormData(form));
+   // disabled 필드는 FormData에서 제외되므로 별도로 읽습니다.
+   for(const name of ['month','team','target','actual'])input[name]=form.elements.namedItem(name).value;
+   await repo.save(input);committed=true;form.reset();
+   const data=await repo.list();setRows(data);$('filter-month').value=input.month;$('filter-team').value=input.team.trim();draw();
+   $('mode-label').textContent='공동 실습 모드 · DB 연결됨';show('공동 DB에 추가했습니다. 모든 방문자가 볼 수 있습니다.');
+  }catch(e){
+   if(committed){unavailable();show('DB 추가는 완료했지만 목록을 다시 읽지 못했습니다. 다시 추가하지 말고 다시 읽기를 눌러 주세요. '+e.message,true);}
+   else show('추가 결과: '+e.message,true);
+  }finally{lock(false);}
+ });
  $('reload').onclick=reload;reload();
 })();
