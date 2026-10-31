@@ -1,6 +1,6 @@
-// 공개 설정 자리표시자. 현재 앱에서는 읽지 않습니다.
+// 공동 실습 앱에서 읽는 공개 연결 설정입니다.
 // service_role, secret key, 비밀번호, 토큰을 넣지 마세요.
 window.KPI_PUBLIC_CONFIG = Object.freeze({
-  supabaseUrl: 'YOUR_SUPABASE_PROJECT_URL',
-  supabasePublishableKey: 'YOUR_SUPABASE_PUBLISHABLE_KEY'
+  supabaseUrl: "https://essgbczsxltlygycyoku.supabase.co",
+  supabasePublishableKey: 'sb_publishable_ql3vv56pGbyC-Bi-0nSGmA_4Sch-5Tl'
 });
